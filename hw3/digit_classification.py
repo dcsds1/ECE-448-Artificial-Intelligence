@@ -5,8 +5,44 @@ Created on Fri Oct 28 10:17:26 2016
 @author: changsongdong
 """
 
+import itertools
 import numpy as np
+import matplotlib.pyplot as plt
 
+def plot_confusion_matrix(cm, classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Purples):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, cm[i, j],
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    
+    
 smoothing_constant = 1
 
 class NaiveBayes:
@@ -93,21 +129,41 @@ class NaiveBayes:
                     posterior[j][k] = likelihoods_matrix[2 * i + test_sample[j][k]][j][k]
             predict_label[i] = np.sum(np.log(posterior))
         return np.argmax(predict_label + np.log(priors_matrix))
-        
-    def accuracy(self, predicts, test_label_file):
-        test_label = self.get_label(test_label_file)
-        return np.sum(predicts[:, None] == test_label) / len(test_label)
+
         
     def test(self, test_data_file, test_label_file, likelihoods_matrix, priors_matrix):
         test_data = self.get_images(test_data_file)
+        test_label = self.get_label(test_label_file)
         predict_results = []
         for sample in test_data:
             predict_results.append(self.predict_label(sample, likelihoods_matrix, priors_matrix))
-        return self.accuracy(np.asarray(predict_results), test_label_file)
+        predict_results = np.asarray(predict_results)
+        acc = self.accuracy(predict_results, test_label)
+        print('acc = ', acc)
+#        confusion_matrix = self.plot_confusion_matrix(predict_results, test_label)
+#        print('confusion_matrix is:', confusion_matrix)
+        return predict_results, test_label
+
+# ==================================
         
+    def accuracy(self, predicts, test_label):
+        return np.sum(predicts[:, None] == test_label) / len(test_label)
+        
+    def confusion_matrix(self, predicts, labels):
+        confusion_matrix = np.zeros((10, 10))
+        labels = labels.flatten()
+        for i in range(len(labels)):
+            confusion_matrix[labels[i]][predicts[i]] += 1
+            
+        index = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        #np.set_printoptions(precision=2)
+        plt.figure()
+        plot_confusion_matrix(confusion_matrix, index, title='Confusion Matrix')
+        plt.show()
+        return confusion_matrix
+    
 if __name__ == '__main__':
     classifier = NaiveBayes()
     like, pri = classifier.train('trainingimages', 'traininglabels')
-    acc = classifier.test('testimages', 'testlabels', like, pri)
-#    predict = classifier.predict_label(testdata[0], like, pri)
-    
+    predict_results, test_label = classifier.test('testimages', 'testlabels', like, pri)
+    classifier.confusion_matrix(predict_results, test_label)    
