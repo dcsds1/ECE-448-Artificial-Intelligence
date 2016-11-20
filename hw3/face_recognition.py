@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sun Oct 30 11:06:15 2016
+Created on Sat Nov 12 15:59:44 2016
 
 @author: changsongdong
 """
@@ -19,22 +19,15 @@ class NaiveBayes:
         self.num_per_class = {}
 #        self.all_combinations = [np.reshape(np.array(i), (n, m)) for i in itertools.product([0, 1], repeat = n*m)]
         if joint == True:
-            for i in range(10):
-                self.all_dicts.append([{} for _ in range(0, (28 // self.n) * (28 // self.m))])
+            for i in range(2):
+                self.all_dicts.append([{} for _ in range(0, (70 // self.n) * (60 // self.m))])
         elif joint == False:
-            for i in range(10):
-                self.all_dicts.append([{} for _ in range(0, (29 - self.n) * (29 - self.m))])
+            for i in range(2):
+                self.all_dicts.append([{} for _ in range(0, (71 - self.n) * (61 - self.m))])
             
 #        self.all_dicts = dict(zip(all_dicts, all_dicts))
         
     def get_images(self, data_file_name):
-        """
-        Build the data set
-        
-        parameters: image data file name ('trainingimages', 'testimages')
-        returns: three dimensional array, shape: number of samples * 28 * 28
-        """
-        
         data = []
         with open(data_file_name, 'r') as file:
             for line in file:
@@ -45,22 +38,15 @@ class NaiveBayes:
             for j in range(width):
                 if data[i][j] == ' ':
                     data[i][j] = 0
-                elif data[i][j] == '#' or data[i][j] == '+':
+                elif data[i][j] == '#':
                     data[i][j] = 1
                 else:
-                    data[i][j] =2
+                    data[i][j] = 3
                     
-        data = np.delete(np.asarray(data), 28, 1).reshape(height // 28, 28, 28)
+        data = np.delete(np.asarray(data), 60, 1).reshape(height // 70, 70, 60)
         return data
     
     def get_label(self, label_file_name):
-        """
-        Build the label set
-        
-        parameters: data label file name ('traininglabels', 'testlabels')
-        returns: two dimensional array, shape: number of samples * 1
-        """
-        
         label = []
         with open(label_file_name, 'r') as file:
             for line in file:
@@ -72,64 +58,52 @@ class NaiveBayes:
 # =============================== train =============================
         
     def priors(self, label):
-        """
-        priors of different classes in the training set
-        
-        parameters: labels for all the data
-        returns: 10 * 1 array with each element representing for a class's 
-                 priors
-        """
-        
         priors = []
-        for i in range(10):
+        for i in range(2):
             priors.append(len(np.where(label == i)[0]) / len(label))
             self.num_per_class[i] = len(np.where(label == i)[0]) # store number of samples in each class
         return np.asarray(priors)
         
     def joint_likelihoods(self, train_data, train_label, joint):
-        """
-        n * m feature
-        """
-        
         if joint == True:
-            for i in range(10):
+            for i in range(2):
                 class_index = np.where(train_label == i)[0]
                 data_i = train_data[class_index] # data from the i_th class
                 
                 for sample_idx in range(self.num_per_class[i]):
-                    for row in range(28 // self.n):
-                        for col in range(28 // self.m):
+                    for row in range(70 // self.n):
+                        for col in range(60 // self.m):
                             # explored feature
                             if tuple(map(tuple, data_i[sample_idx][self.n * row : self.n * row + self.n,
                                          self.m * col : self.m * col + self.m])) \
-                                         in self.all_dicts[i][row * (28 // self.m) + col]:
-                                self.all_dicts[i][row * (28 // self.m) + col][tuple(map(tuple, \
+                                         in self.all_dicts[i][row * (60 // self.m) + col]:
+                                self.all_dicts[i][row * (60 // self.m) + col][tuple(map(tuple, \
                                          data_i[sample_idx][self.n * row : self.n * row + self.n,
                                          self.m * col : self.m * col + self.m]))] += 1
                             # feature never seen before
                             else:
-                                self.all_dicts[i][row * (28 // self.m) + col]\
+                                self.all_dicts[i][row * (60 // self.m) + col]\
                                         [tuple(map(tuple, data_i[sample_idx][self.n * row : self.n * row + self.n,
                                         self.m * col : self.m * col + self.m]))] = 1
 
 #        # disjoint
         else:
-            for i in range(10):
+            for i in range(2):
                 class_index = np.where(train_label == i)[0]
                 data_i = train_data[class_index]
                 
                 for sample_idx in range(self.num_per_class[i]):
-                    for row in range(29 - self.n):
-                        for col in range(29 - self.m):
+                    for row in range(71 - self.n):
+                        for col in range(61 - self.m):
                             if tuple(map(tuple, data_i[sample_idx][row : row + self.n,
                                          col : col + self.m])) \
-                                         in self.all_dicts[i][row * (29 - self.m) + col]:
-                                self.all_dicts[i][row * (29 - self.m) + col][tuple(map(tuple, \
+                                         in self.all_dicts[i][row * (61 - self.m) + col]:
+                                self.all_dicts[i][row * (61 - self.m) + col][tuple(map(tuple, \
                                          data_i[sample_idx][row : row + self.n,
                                          col : col + self.m]))] += 1
                             # feature never seen before
                             else:
-                                self.all_dicts[i][row * (29 - self.m) + col]\
+                                self.all_dicts[i][row * (61 - self.m) + col]\
                                         [tuple(map(tuple, data_i[sample_idx][row : row + self.n,
                                         col : col + self.m]))] = 1
                                         
@@ -155,17 +129,17 @@ class NaiveBayes:
             return k / (self.num_per_class[class_index] + k * 2**(self.n*self.m))
 
     def predict_label(self, test_sample, likelihoods, priors_matrix, joint):
-        predict_label = np.zeros(10)
+        predict_label = np.zeros(2)
         
         if joint == True:
-            posterior = np.zeros((28 // self.n, 28 // self.m))
-            for i in range(10):
-                for row in range(28 // self.n):
-                    for col in range(28 // self.m):
+            posterior = np.zeros((70 // self.n, 60 // self.m))
+            for i in range(2):
+                for row in range(70 // self.n):
+                    for col in range(60 // self.m):
                         posterior[row][col] = self.compute_probability(tuple(map(tuple,\
                                 test_sample[self.n * row : self.n * row + self.n,\
                                 self.m * col : self.m * col + self.m])), i,\
-                                row * (28 // self.m) + col)
+                                row * (60 // self.m) + col)
                                 
                 predict_label[i] = np.sum(np.log(posterior))
             posterior_probability = predict_label + np.log(priors_matrix)
@@ -173,13 +147,13 @@ class NaiveBayes:
 
         # disjoint
         else:
-            posterior = np.zeros((29 - self.n, 29 - self.m))
-            for i in range(10):
-                for row in range(29 - self.n):
-                    for col in range(29 - self.m):
+            posterior = np.zeros((71 - self.n, 61 - self.m))
+            for i in range(2):
+                for row in range(71 - self.n):
+                    for col in range(61 - self.m):
                         posterior[row][col] = self.compute_probability(tuple(map(tuple,\
                                 test_sample[row : row + self.n, col : col + self.m])), i,\
-                                row * (29 - self.m) + col)
+                                row * (61 - self.m) + col)
                                             
                 predict_label[i] = np.sum(np.log(posterior))
             posterior_probability = predict_label + np.log(priors_matrix)
@@ -209,12 +183,8 @@ class NaiveBayes:
           
 if __name__ == '__main__':
     k = 1 #smoothing_constant
-    classifier = NaiveBayes(4,4, joint=True)
-    pri, like = classifier.train('trainingimages', 'traininglabels', joint=True)
-    predict_results, test_label = classifier.test('testimages', 'testlabels', like, pri, joint=True)
-
-#    train_data = classifier.get_images('trainingimages')
-#    train_label = classifier.get_label('traininglabels')
-#    pri = classifier.priors(train_label[0])
-#    all_dicts = classifier.joint_likelihoods(train_data[0], train_label[0], True)
-#    likelihoods = classifier.joint_likelihoods(train_data, train_label, 2, 2)
+    classifier = NaiveBayes(4,4, joint=False)
+    pri, like = classifier.train('facedatatrain', 'facedatatrainlabels', joint=False)
+    predict_results, test_label = classifier.test('facedatatest', 'facedatatestlabels', like, pri, joint=False)
+#    facedatatest = classifier.get_images('facedatatest')
+#    facedatatestlabels = classifier.get_label('facedatatestlabels')

@@ -8,6 +8,9 @@ Created on Fri Oct 28 10:17:26 2016
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
+import pylab
+
+smoothing_constant = 1
 
 def plot_confusion_matrix(cm, classes,
                           normalize=False,
@@ -43,8 +46,6 @@ def plot_confusion_matrix(cm, classes,
     plt.xlabel('Predicted label')
     
     
-smoothing_constant = 1
-
 class NaiveBayes:
     def get_images(self, data_file_name):
         """
@@ -91,17 +92,29 @@ class NaiveBayes:
 # =============================== train =============================
         
     def priors(self, label):
+        """
+        priors of different classes in the training set
+        
+        parameters: labels for all the data
+        returns: 10 * 1 array with each element representing for a class's 
+                 priors
+        """
+        
         priors = []
         for i in range(10):
             priors.append(len(np.where(label == i)[0]) / len(label))
         return np.asarray(priors)
     
     def likelihoods(self, train_data, label):
+        """
+        estimate the likelihoods P(Fij | class) for every pixel location (i,j) 
+        and for every digit class from 0 to 9
+        """
+        
         likelihoods = np.zeros((20, 28, 28))
         for i in range(10):
             index = np.where(label == i)[0]
-            data_i = train_data[index]
-            data_i = np.sum(data_i, 0)
+            data_i = np.sum(train_data[index], 0)
             
             # likelihoods with Laplace smoothing
             likelihoods[2 * i] = (((len(index) - data_i) + smoothing_constant )/
@@ -137,22 +150,26 @@ class NaiveBayes:
         test_data = self.get_images(test_data_file)
         test_label = self.get_label(test_label_file)
         predict_results = []
-        max_prob = np.zeros(10)
-        min_prob = np.zeros(10)
+        max_example = np.zeros((10, 28, 28))
+        min_example = np.zeros((10, 28, 28))
+        max_prob = np.ones(10) * -3000
+        min_prob = np.ones(10)
+        
         for i in range(len(test_data)):
             label, prob = self.predict_label(test_data[i], likelihoods_matrix, priors_matrix)
             predict_results.append(label)
+            
             if prob > max_prob[label]:
                 max_prob[label] = prob
-            elif prob < min_prob[label]:
+                max_example[label] = test_data[i]
+            if prob < min_prob[label]:
                 min_prob[label] = prob
+                min_example[label] = test_data[i]
             
         predict_results = np.asarray(predict_results)
         acc = self.accuracy(predict_results, test_label)
         print('acc = ', acc)
-#        confusion_matrix = self.plot_confusion_matrix(predict_results, test_label)
-#        print('confusion_matrix is:', confusion_matrix)
-        return predict_results, test_label
+        return
 
 # ================================= evaluation ==============================
         
@@ -167,21 +184,58 @@ class NaiveBayes:
         confusion_matrix /= confusion_matrix.sum(axis=1)[:, None]
         confusion_matrix = np.around(confusion_matrix, decimals=3)
         index = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-        #np.set_printoptions(precision=2)
         plt.figure(figsize=(10,10))
         plot_confusion_matrix(confusion_matrix, index, title='Confusion Matrix')
         plt.show()
         return confusion_matrix
         
+    def best_worst_digits(self, test_data_file, test_label_file, likelihoods_matrix, priors_matrix):
+        test_data = self.get_images(test_data_file)
+        test_label = self.get_label(test_label_file)
+        max_example = np.zeros((10, 28, 28))
+        min_example = np.zeros((10, 28, 28))
+        max_prob = np.ones(10) * -3000
+        min_prob = np.ones(10)
+        
+        for i in range(10):
+            index = np.where(test_label == i)[0]
+            data_i = test_data[index]
+            for j in range(len(data_i)):
+                label, prob = self.predict_label(data_i[j], likelihoods_matrix, priors_matrix)
+                if prob > max_prob[i]:
+                    max_prob[i] = prob
+                    max_example[i] = data_i[j]
+                if prob < min_prob[i]:
+                    min_prob[i] = prob
+                    min_example[i] = data_i[j]
+
+        return max_example, min_example, max_prob, min_prob
+        
 # =========================== odds ratios ==========================
         
-    def draw_figure(self, class_1, class_2, likelihoods_matrix):
-        plt.imshow(likelihoods_matrix[2 * class_1 + 1])
-        plt.imshow(likelihoods_matrix[2 * class_2 + 1])
-        plt.imshow(likelihoods_matrix[2 * class_1 + 1] / likelihoods_matrix[2 * class_2 + 1])
-    
+    def draw_odds(self, class_1, class_2, likelihoods_matrix):
+        odds = np.log(likelihoods_matrix[2 * class_1 + 1] / likelihoods_matrix[2 * class_2 + 1])
+        fig1, ax1 = plt.subplots() 
+        cax1 = ax1.imshow(odds, interpolation='nearest', vmax=1.5, vmin=-3)
+        fig1.colorbar(cax1, ticks=[-3, -2, -1, 0, 1])
+        
+    def draw_likelihoods(self, class_index, likelihoods_matrix):
+        fig, ax = plt.subplots() 
+        cax = ax.imshow(likelihoods_matrix[2 * class_index + 1], interpolation='nearest')
+        fig.colorbar(cax, ticks=[1, 2, 3, 4])
+        
+    def draw(self, class_1, class_2, likelihoods):
+        self.draw_odds(class_1, class_2, likelihoods)
+        pylab.savefig(str(class_1)+'_'+str(class_2)+'odds')
+        self.draw_likelihoods(class_1, likelihoods)
+        pylab.savefig(str(class_1))
+        self.draw_likelihoods(class_2, likelihoods)        
+        pylab.savefig(str(class_2))
+
 if __name__ == '__main__':
     classifier = NaiveBayes()
     like, pri = classifier.train('trainingimages', 'traininglabels')
-    predict_results, test_label = classifier.test('testimages', 'testlabels', like, pri)
-    cm = classifier.confusion_matrix(predict_results, test_label)    
+#    predict_results, test_label = classifier.test('testimages', 'testlabels', like, pri)
+    max_example, min_example, max_prob, min_prob = classifier.best_worst_digits('testimages', 'testlabels', like, pri)
+#    cm = classifier.confusion_matrix(predict_results, test_label)   
+#    classifier.draw(7,9, like) 

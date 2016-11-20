@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sun Oct 30 11:06:15 2016
+Created on Fri Nov 11 19:31:31 2016
 
 @author: changsongdong
 """
@@ -45,10 +45,12 @@ class NaiveBayes:
             for j in range(width):
                 if data[i][j] == ' ':
                     data[i][j] = 0
-                elif data[i][j] == '#' or data[i][j] == '+':
+                elif data[i][j] == '#':
                     data[i][j] = 1
+                elif data[i][j] == '+':
+                    data[i][j] = 2
                 else:
-                    data[i][j] =2
+                    data[i][j] = 3
                     
         data = np.delete(np.asarray(data), 28, 1).reshape(height // 28, 28, 28)
         return data
@@ -209,12 +211,6 @@ class NaiveBayes:
           
 if __name__ == '__main__':
     k = 1 #smoothing_constant
-    classifier = NaiveBayes(4,4, joint=True)
+    classifier = NaiveBayes(3,2, joint=True)
     pri, like = classifier.train('trainingimages', 'traininglabels', joint=True)
     predict_results, test_label = classifier.test('testimages', 'testlabels', like, pri, joint=True)
-
-#    train_data = classifier.get_images('trainingimages')
-#    train_label = classifier.get_label('traininglabels')
-#    pri = classifier.priors(train_label[0])
-#    all_dicts = classifier.joint_likelihoods(train_data[0], train_label[0], True)
-#    likelihoods = classifier.joint_likelihoods(train_data, train_label, 2, 2)
